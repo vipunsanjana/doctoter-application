@@ -3,17 +3,29 @@ const jwt = require('jsonwebtoken');
 
 module.exports = async (req, res, next) => {
     try {
-        const token = req.headers['authorization'].split(' ')[1];
-        const decoded = jwt.verify(token, process.env.key);
+        // Check if the authorization header is present
+        const authorizationHeader = req.headers['authorization'];
 
-    
+        if (!authorizationHeader) {
+            return res.status(401).send({ message: 'Authorization header missing', success: false });
+        }
+
+        // Extract the token from the authorization header
+        const token = authorizationHeader.split(' ')[1];
+
+        // Verify the token
+        const decoded = jwt.verify(token, "jhhhhhhg");
+
         const userId = decoded.id;
-    
-        const userDoc = await admin.firestore().collection('users').doc(userId).get();
+
+        // Assuming 'email' is the key you want to use to fetch the user document
+        const userDoc = await admin.firestore().collection('admin').doc(userId).get();
 
         if (!userDoc.exists) {
             return res.status(401).send({ message: 'User not found', success: false });
         }
+
+        // Attach the user data to the request object
         req.user = userDoc.data();
 
         next();
