@@ -147,7 +147,7 @@ router.get("/get-all-doctors",authMiddleware, async (req, res) => {
 
 
 
-router.post("/update-doctor-profile/:doctorId", upload.single('image'), async (req, res) => {
+router.post("/update-doctor-profile/:doctorId",authMiddleware, upload.single('image'), async (req, res) => {
   try {
     const {  name, description, price, from, to, date } = req.body;
 
@@ -247,7 +247,7 @@ router.delete("/delete-doctor/:doctorId",authMiddleware, async (req, res) => {
 
 
 
-router.get("/get-all-appointments", async (req, res) => {
+router.get("/get-all-appointments",authMiddleware, async (req, res) => {
   try {
     
     const snapshot = await appointmentsCollection.get();
