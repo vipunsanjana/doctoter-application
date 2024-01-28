@@ -63,15 +63,11 @@ const upload = multer({ storage: storage });
   try {
     const { name, description, price, from, to, date } = req.body;
 
-    // Check if image file is provided
     if (!req.file) {
       return res.status(400).send({ error: "Image is Required" });
     }
-
-    // Access the image data from req.file.buffer
+    
     const imageData = req.file.buffer;
-
-    // Process the image data as needed (e.g., save to storage)
 
     switch (true) {
       case !name:
@@ -94,7 +90,7 @@ const upload = multer({ storage: storage });
 
     const adjustedFrom = moment(from).subtract(2, 'hours').format('HH:mm:ss');
 
-    // In this example, we're saving the image data to Firestore as a base64 string
+
     const base64Image = imageData.toString('base64');
 
     await doctorsCollection.doc(doctorId).set({
@@ -147,5 +143,119 @@ router.get("/get-all-doctors",authMiddleware, async (req, res) => {
         res.status(500).send({ message: "Error fetching doctors.", success: false, error: error.message });
     }
 });
+
+
+
+router.post("/update-doctor-profile", authMiddleware, upload.single('image'), async (req, res) => {
+  try {
+    const { userId, name, description, price, from, to, date } = req.body;
+
+   
+    if (!req.file) {
+      return res.status(400).send({ error: "Image is Required" });
+    }
+
+
+    const imageData = req.file.buffer;
+
+  
+
+    switch (true) {
+      case !userId:
+        return res.status(500).send({ error: "User ID is Required" });
+      case !name:
+        return res.status(500).send({ error: "Name is Required" });
+      case !description:
+        return res.status(500).send({ error: "Description is Required" });
+      case !price:
+        return res.status(500).send({ error: "Price is Required" });
+      case !from:
+        return res.status(500).send({ error: "From is Required" });
+      case !to:
+        return res.status(500).send({ error: "To is Required" });
+      case !date:
+        return res.status(500).send({ error: "Date is Required" });
+    }
+
+    const doctorRef = doctorsCollection.doc(userId);
+    const doctorSnapshot = await doctorRef.get();
+
+    if (!doctorSnapshot.exists) {
+      return res.status(404).send({ error: "Doctor not found" });
+    }
+
+    const adjustedFrom = moment(from).subtract(2, 'hours').format('HH:mm:ss');
+    const base64Image = imageData.toString('base64');
+
+    await doctorRef.update({
+      name,
+      description,
+      price,
+      from,
+      to,
+      date,
+      adjustedFrom,
+      image: {
+        data: base64Image,
+        contentType: req.file.mimetype,
+      },
+      isbook: false,
+    });
+
+    res.status(200).send({ message: "Doctor profile updated successfully.", success: true });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({
+      success: false,
+      error,
+      message: "Error updating doctor profile",
+    });
+  }
+});
+
+
+router.delete("/delete-doctor/:userId", authMiddleware, isAdminMiddleware, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    if (!userId) {
+      return res.status(400).send({ error: "User ID is Required" });
+    }
+
+    const doctorRef = doctorsCollection.doc(userId);
+    const doctorSnapshot = await doctorRef.get();
+
+    if (!doctorSnapshot.exists) {
+      return res.status(404).send({ error: "Doctor not found" });
+    }
+
+
+    await doctorRef.delete();
+
+    res.status(200).send({ message: "Doctor deleted successfully.", success: true });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({
+      success: false,
+      error,
+      message: "Error deleting doctor",
+    });
+  }
+});
+
+function isAdminMiddleware(req, res, next) {
+
+  const userRole = req.user.role; 
+
+  if (userRole !== 'admin') {
+    return res.status(403).send({ error: "Permission denied. Admin access required." });
+  }
+
+
+}
+
+
 
 module.exports = router;
