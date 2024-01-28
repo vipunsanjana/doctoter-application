@@ -6,6 +6,7 @@ const multer = require('multer');
 const firestore = admin.firestore();
 const moment = require('moment');
 const doctorsCollection = firestore.collection('doctors');
+const appointmentsCollection = firestore.collection('appointments');
 
 
 const storage = multer.memoryStorage();
@@ -146,22 +147,18 @@ router.get("/get-all-doctors",authMiddleware, async (req, res) => {
 
 
 
-router.post("/update-doctor-profile", authMiddleware, upload.single('image'), async (req, res) => {
+router.post("/update-doctor-profile/:doctorId", upload.single('image'), async (req, res) => {
   try {
-    const { userId, name, description, price, from, to, date } = req.body;
+    const {  name, description, price, from, to, date } = req.body;
 
-   
     if (!req.file) {
       return res.status(400).send({ error: "Image is Required" });
     }
 
-
     const imageData = req.file.buffer;
 
-  
-
     switch (true) {
-      case !userId:
+      case !doctorId:
         return res.status(500).send({ error: "User ID is Required" });
       case !name:
         return res.status(500).send({ error: "Name is Required" });
@@ -177,7 +174,7 @@ router.post("/update-doctor-profile", authMiddleware, upload.single('image'), as
         return res.status(500).send({ error: "Date is Required" });
     }
 
-    const doctorRef = doctorsCollection.doc(userId);
+    const doctorRef = doctorsCollection.doc(doctorId);
     const doctorSnapshot = await doctorRef.get();
 
     if (!doctorSnapshot.exists) {
@@ -214,22 +211,20 @@ router.post("/update-doctor-profile", authMiddleware, upload.single('image'), as
   }
 });
 
-
-router.delete("/delete-doctor/:userId", authMiddleware, isAdminMiddleware, async (req, res) => {
+router.delete("/delete-doctor/:doctorId",authMiddleware, async (req, res) => {
   try {
-    const userId = req.params.userId;
+    const doctorId = req.params.doctorId; 
 
-    if (!userId) {
-      return res.status(400).send({ error: "User ID is Required" });
+    if (!doctorId) {
+      return res.status(400).send({ error: "Doctor ID is required" });
     }
 
-    const doctorRef = doctorsCollection.doc(userId);
+    const doctorRef = doctorsCollection.doc(doctorId);
     const doctorSnapshot = await doctorRef.get();
 
     if (!doctorSnapshot.exists) {
       return res.status(404).send({ error: "Doctor not found" });
     }
-
 
     await doctorRef.delete();
 
@@ -245,16 +240,34 @@ router.delete("/delete-doctor/:userId", authMiddleware, isAdminMiddleware, async
   }
 });
 
-function isAdminMiddleware(req, res, next) {
 
-  const userRole = req.user.role; 
 
-  if (userRole !== 'admin') {
-    return res.status(403).send({ error: "Permission denied. Admin access required." });
+
+
+
+
+
+router.get("/get-all-appointments", async (req, res) => {
+  try {
+    
+    const snapshot = await appointmentsCollection.get();
+
+    if (snapshot.empty) {
+      return res.status(404).send({ message: "No appointments found.", success: false });
+    }
+
+
+    const appointments = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.status(200).send({ message: "Appointments fetched successfully.", success: true, data: appointments });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Error fetching appointments.", success: false, error: error.message });
   }
-
-
-}
+});
 
 
 

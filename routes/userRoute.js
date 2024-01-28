@@ -126,41 +126,28 @@ router.post("/check-booking-availability", async (req, res) => {
   }
 });
 
-
-router.post("/book-appointment",  async (req, res) => {
+router.post("/book-appointment", async (req, res) => {
   try {
-    const { patientEmail,date,time } = req.body;
+    const { address, location, phone_number, full_name, date, time } = req.body;
 
-    const fromTime = moment(time, 'HH:mm').clone().subtract(0, 'hours').format("HH:mm");
-    const toTime = moment(time, 'HH:mm').clone().add(1/3, 'hours').format("HH:mm");
-
-    const appoinmentSnapshot = await appointmentsCollection.doc().get();
-    const appoinmentId = appoinmentSnapshot.id;
-
-    const existingAppointmentsQuery = await appointmentsCollection
-    .where('date', '==', date)
-    .where('time', '>', fromTime)
-    .where('time', '<=', toTime)
-    .get();
-  
-  const existingAppointments = existingAppointmentsQuery.docs;
-  
-  if (existingAppointments.length > 0) {
-    return res.status(200).send({ message: "Appointments not available.", success: false });
-  }
-    
-
-    await appointmentsCollection.doc(appoinmentId).set({
-      patientEmail,
+   
+    const appointmentRef = await appointmentsCollection.add({
+      address,
+      phone_number,
+      location,
+      full_name,
       date,
       time,
-      isBook:true,
+      isBook: true,
       
     });
-    res.status(200).send({ message: "appoinment Registered Successfully.", success: true });
+
+    const appointmentId = appointmentRef.id;
+
+    res.status(200).send({ message: "Appointment registered successfully.", success: true, appointmentId });
   } catch (error) {
     console.error(error);
-    res.status(500).send({ message: "appoinment Registration Error.", success: false, error });
+    res.status(500).send({ message: "Appointment registration error.", success: false, error });
   }
 });
 
